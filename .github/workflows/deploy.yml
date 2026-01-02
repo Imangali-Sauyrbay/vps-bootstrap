@@ -1,0 +1,113 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      update_fingerprint:
+        description: "Force Update SSH Fingerprint?"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_SSH_PORT: ${{ secrets.SSH_PORT }}
+      SECRET_WG_HOST: ${{ secrets.WG_HOST }}
+      SECRET_WG_PASSWORD: ${{ secrets.WG_PASSWORD }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Detect Active SSH Port
+        id: port_check
+        timeout-minutes: 1
+        run: |
+          TARGET_HOST="${{ secrets.SSH_HOST }}"
+          DESIRED_PORT="${{ secrets.SSH_PORT }}" # Твой 2807 из секретов
+          DEFAULT_PORT="22"
+
+          echo "🕵️ Starting Port Detection on $TARGET_HOST..."
+
+          if nc -z -v -w 5 "$TARGET_HOST" "$DESIRED_PORT" 2>/dev/null; then
+            echo "✅ Target Port $DESIRED_PORT is OPEN. Using it."
+            echo "FINAL_SSH_PORT=$DESIRED_PORT" >> $GITHUB_ENV
+
+          elif nc -z -v -w 5 "$TARGET_HOST" "$DEFAULT_PORT" 2>/dev/null; then
+            echo "⚠️ Target Port $DESIRED_PORT closed. But Default Port 22 is OPEN."
+            echo "🔄 Fallback to Port 22 (Clean Server detected)."
+            echo "FINAL_SSH_PORT=$DEFAULT_PORT" >> $GITHUB_ENV
+
+          else
+            echo "❌ CRITICAL: Both port $DESIRED_PORT and 22 are unreachable!"
+            exit 1
+          fi
+
+      - name: Manage SSH Fingerprints
+        if: ${{ inputs.update_fingerprint == true }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "🗿 Forcing fingerprint update for port ${{ env.FINAL_SSH_PORT }}..."
+          ssh-keyscan -p ${{ env.FINAL_SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Render All Scripts Dynamically
+        run: |
+          echo "🔮 Preparing magic variables..."
+
+          SUBST_VARS=""
+
+          while IFS='=' read -r -d '' name value; do
+            
+            if [[ "$name" == SECRET_* ]]; then
+              CLEAN_NAME=${name#SECRET_}
+              
+              export $CLEAN_NAME="$value"
+              
+              SUBST_VARS="$SUBST_VARS \${$CLEAN_NAME}"
+              
+              echo "🔹 Found secret: $CLEAN_NAME"
+            fi
+          done < <(printenv -0)
+
+          echo "🎨 Rendering scripts with variables: $SUBST_VARS"
+
+          find scripts -type f -name "*.sh" | while read file; do
+            echo "   Processing $file..."
+            
+            envsubst "$SUBST_VARS" < "$file" > "$file.tmp"
+            mv "$file.tmp" "$file"
+            chmod +x "$file"
+          done
+
+          echo "✅ All scripts rendered!"
+
+      - name: Copy Files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ env.FINAL_SSH_PORT }}
+          source: "docker-compose.yml,scripts"
+          target: "/opt/vps-stack/"
+          command_timeout: 30m
+
+      - name: Execute Migrations & Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ env.FINAL_SSH_PORT }}
+          script: |
+            cd /opt/vps-stack
+
+            chmod +x scripts/pipeline.sh
+
+            ./scripts/pipeline.sh
