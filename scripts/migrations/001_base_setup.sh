@@ -3,6 +3,11 @@ set -e
 
 echo "🛠️ [001-PRE] Starting Base Setup..."
 
+if ! command -v curl &> /dev/null; then
+    echo "📦 Installing curl..."
+    apt-get update
+    apt-get install -y curl
+fi
 
 if ! command -v docker &> /dev/null; then
     echo "🐳 Installing Docker..."
