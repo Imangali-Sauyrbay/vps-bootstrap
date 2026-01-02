@@ -5,7 +5,7 @@ PROJECT_ROOT="/opt/vps-stack"
 BASE_DIR="$PROJECT_ROOT/scripts"
 HOOKS_DIR="$BASE_DIR/hooks"
 
-trap 'echo "🚨 Pipeline exiting... Triggering cleanup!"; run_hook "99_self_destruct.sh"' EXIT
+trap 'echo "🏁 End of pipeline detected. Triggering Cleanup..."; run_hook "99_self_destruct.sh"' EXIT
 
 run_hook() {
     HOOK_NAME="$1"
@@ -64,8 +64,5 @@ run_hook "30_after_deploy.sh"
 # 5. Post-Migrations (SSH Port Rotation)
 echo "🔒 Running Post-Migrations..."
 run_pipe "entrypoint.sh" "post"
-
-# 6. Final hook
-run_hook "99_self_destruct.sh"
 
 echo "✅ Pipeline Finished Successfully!"
