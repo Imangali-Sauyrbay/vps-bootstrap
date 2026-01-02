@@ -5,6 +5,8 @@ PROJECT_ROOT="/opt/vps-stack"
 BASE_DIR="$PROJECT_ROOT/scripts"
 HOOKS_DIR="$BASE_DIR/hooks"
 
+trap 'echo "🚨 Pipeline exiting... Triggering cleanup!"; run_hook "99_self_destruct.sh"' EXIT
+
 run_hook() {
     HOOK_NAME="$1"
     FILE="$HOOKS_DIR/$HOOK_NAME"
