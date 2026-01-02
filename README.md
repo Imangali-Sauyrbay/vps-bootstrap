@@ -50,6 +50,25 @@ It features a **self-healing, hook-based pipeline** that manages Docker, WireGua
 
 ---
 
+## 🛡️ Security Hardening (Post-Install)
+
+By default, the Nginx Proxy Manager Admin UI is exposed on port `81` for initial setup.
+**Once you have configured a Proxy Host for the admin panel itself (e.g., `admin.your-domain.com` -> `nginx-proxy-manager:81`), you MUST close this port.**
+
+### 🔒 How to lock down port 81:
+
+1.  Log in to NPM (`http://your-ip:81`) using default credentials (`admin@example.com` / `changeme`).
+2.  **Change the Email and Password** immediately!
+3.  Create a Proxy Host:
+    * Domain: `admin.your-domain.com` (Ensure it's Orange Clouded in CF).
+    * Forward Hostname: `nginx-proxy-manager` (Docker internal DNS).
+    * Forward Port: `81`.
+    * SSL: Force SSL, Let's Encrypt.
+4.  **Activate the lockdown migration:**
+    * Rename `scripts/migrations/002_seal_admin_panel.sh.disabled` to `scripts/migrations/002_seal_admin_panel.sh`.
+    * Commit and Push.
+    * The pipeline will run `ufw delete allow 81/tcp`, effectively hiding the panel from the public internet. Access will only be possible via your domain.
+
 ## 🔮 Magic Templating System
 
 You don't need to edit the pipeline code to add new secrets into your bash scripts.
@@ -69,7 +88,7 @@ Set these in **Settings -> Secrets and variables -> Actions**:
 | Secret | Mapped As (in YAML) | Description |
 | :--- | :--- | :--- |
 | `SSH_PORT` | `SECRET_SSH_PORT` | **TARGET** Custom Port (e.g., `2807`). The script will configure the server to listen here. |
-| `WG_HOST` | `SECRET_WG_HOST` | VPN Domain (e.g., `vpn.s-iman.dev`). |
+| `WG_HOST` | `SECRET_WG_HOST` | VPN Domain (e.g., `vpn.domain.com`). |
 | `WG_PASSWORD` | `SECRET_WG_PASSWORD` | WireGuard Admin Password. |
 | `SSH_HOST` | - | Server IP or Domain. |
 | `SSH_USER` | - | SSH Username (`root`). |
@@ -84,7 +103,7 @@ Set these in **Settings -> Secrets and variables -> Actions**:
 
 1.  **Detection:** GitHub Action detects the active SSH port.
 2.  **Templating:** Secrets are injected into bash scripts.
-3.  **Transfer:** Scripts are uploaded to `/opt/siman-stack`.
+3.  **Transfer:** Scripts are uploaded to `/opt/vps-stack`.
 4.  **Execution (`pipeline.sh`):**
     * **Hook 00:** Start.
     * **Pre-Migration:** Installs Docker, sets up UFW (Allows both 22 and Custom Port).
@@ -92,7 +111,7 @@ Set these in **Settings -> Secrets and variables -> Actions**:
     * **Deploy:** Pulls images, starts containers.
     * **Post-Migration:** Updates `sshd_config`, schedules SSH restart, deletes UFW rule for port 22.
     * **Hook 99 (Self Destruct):** Deletes `.env`, `scripts/`, and `docker-compose.yml`.
-5.  **Result:** A clean server with running containers and persistent data in `/opt/siman-stack/volumes`.
+5.  **Result:** A clean server with running containers and persistent data in `/opt/vps-stack/volumes`.
 
 ---
 

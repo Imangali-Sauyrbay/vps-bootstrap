@@ -41,7 +41,6 @@ for script in $(find "$MIGRATIONS_DIR" -maxdepth 1 -name "*.sh" | sort); do
             echo "$filename" >> "$HISTORY_FILE"
             echo "✅ Finished $filename"
         fi
-    else
     fi
 done
 

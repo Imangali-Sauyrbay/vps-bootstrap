@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+echo "🔒 [002] Sealing Nginx Proxy Manager Admin Port (81)..."
+
+if ufw status | grep -q "81/tcp"; then
+    echo "🚫 removing allow rule for port 81..."
+    
+    ufw delete allow 81/tcp
+    
+    echo "✅ Port 81 is now CLOSED to the outside world."
+    echo "   Ensure you have configured a Proxy Host (admin.domain.com) inside NPM,"
+    echo "   otherwise you locked yourself out! (SSH tunnel is your only hope)."
+else
+    echo "🤷‍♂️ Port 81 is already closed or not found in UFW rules."
+fi
+
+ufw reload
+
+echo "✅ [002] Admin Panel sealed."
