@@ -67,7 +67,7 @@ Then, create **Proxy Hosts** to route traffic to your internal Docker containers
 | **Monitoring** | `monitor.domain.com` | `glances` | `61208` | Force SSL, HTTP/2 |
 | **Main Site** | `domain.com` | `landing` | `80` | Force SSL, HTTP/2 |
 
-> **Note:** Ensure all domains are proxied (Orange Cloud) in Cloudflare.
+> **Note:** Ensure all domains are proxied (Orange Cloud) in Cloudflare. Except vpn!
 
 ### 🔒 2. Lockdown Port 81
 
