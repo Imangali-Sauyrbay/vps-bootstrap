@@ -93,7 +93,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: ${{ env.FINAL_SSH_PORT }}
-          source: "docker-compose.yml,scripts"
+          source: "docker-compose.yml,scripts,landing"
           target: "/opt/vps-stack/"
           command_timeout: 30m
 

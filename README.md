@@ -50,24 +50,33 @@ It features a **self-healing, hook-based pipeline** that manages Docker, WireGua
 
 ---
 
-## 🛡️ Security Hardening (Post-Install)
+## 🛡️ Security Hardening & Routing Setup
 
-By default, the Nginx Proxy Manager Admin UI is exposed on port `81` for initial setup.
-**Once you have configured a Proxy Host for the admin panel itself (e.g., `admin.your-domain.com` -> `nginx-proxy-manager:81`), you MUST close this port.**
+By default, ports `80`, `443`, and `51820` (VPN) are open. Port `81` (NPM Admin) is open initially for setup but **must be closed** manually.
 
-### 🔒 How to lock down port 81:
+### 🚦 1. Configure Proxy Hosts (Nginx Proxy Manager)
 
-1.  Log in to NPM (`http://your-ip:81`) using default credentials (`admin@example.com` / `changeme`).
-2.  **Change the Email and Password** immediately!
-3.  Create a Proxy Host:
-    * Domain: `admin.your-domain.com` (Ensure it's Orange Clouded in CF).
-    * Forward Hostname: `nginx-proxy-manager` (Docker internal DNS).
-    * Forward Port: `81`.
-    * SSL: Force SSL, Let's Encrypt.
-4.  **Activate the lockdown migration:**
-    * Rename `scripts/migrations/002_seal_admin_panel.sh.disabled` to `scripts/migrations/002_seal_admin_panel.sh`.
-    * Commit and Push.
-    * The pipeline will run `ufw delete allow 81/tcp`, effectively hiding the panel from the public internet. Access will only be possible via your domain.
+Log in to `http://your-ip:81` (`admin@example.com` / `changeme`). **Change credentials immediately!**
+
+Then, create **Proxy Hosts** to route traffic to your internal Docker containers. Use the container names as hostnames:
+
+| Service | Domain (Example) | Forward Hostname | Port | SSL |
+| :--- | :--- | :--- | :--- | :--- |
+| **NPM Admin** | `admin.domain.com` | `nginx-proxy-manager` | `81` | Force SSL, HTTP/2 |
+| **WireGuard UI** | `vpn.domain.com` | `wg-easy` | `51821` | Force SSL, HTTP/2, **Websockets Support** |
+| **Monitoring** | `monitor.domain.com` | `glances` | `61208` | Force SSL, HTTP/2 |
+| **Main Site** | `domain.com` | `landing` | `80` | Force SSL, HTTP/2 |
+
+> **Note:** Ensure all domains are proxied (Orange Cloud) in Cloudflare.
+
+### 🔒 2. Lockdown Port 81
+
+Once you have verified that `https://admin.domain.com` works:
+
+1.  Rename `scripts/migrations/002_seal_admin_panel.sh.disabled` to `scripts/migrations/002_seal_admin_panel.sh`.
+2.  Commit and Push.
+3.  The pipeline will execute `ufw delete allow 81/tcp`.
+4.  **Result:** The admin panel is now inaccessible via IP, only via your secure domain.
 
 ## 🔮 Magic Templating System
 

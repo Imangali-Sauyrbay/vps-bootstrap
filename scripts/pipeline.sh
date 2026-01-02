@@ -53,16 +53,24 @@ echo "📝 Creating Environment..."
 run_pipe "create_env.sh"
 run_hook "20_after_env.sh"
 
-# 4. Docker Deploy
+# 4. Update landing page
+echo "🎨 Updating Landing Page..."
+
+mkdir -p "$BASE_DIR/volumes/landing"
+cp -r "$BASE_DIR/landing/"* "$BASE_DIR/volumes/landing/"
+
+echo "✅ Landing page updated from source."
+
+# 5. Docker Deploy
 echo "🐳 Deploying Containers..."
 run_pipe "docker_deploy.sh"
 run_hook "30_after_deploy.sh"
 
-# 5. Post-Migrations (SSH Port Rotation)
+# 6. Post-Migrations (SSH Port Rotation)
 echo "🔒 Running Post-Migrations..."
 run_pipe "entrypoint.sh" "post"
 
-# 6. Final hook
+# 7. Final hook
 run_hook "99_self_destruct.sh"
 
 echo "✅ Pipeline Finished Successfully!"
